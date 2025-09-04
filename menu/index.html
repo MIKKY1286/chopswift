@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menu - ChopSwift</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#8B0000',
+                        primaryDark: '#6a0f0f',
+                        secondary: '#F5F5DC',
+                        accent: '#ffd700',
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/css">
+        body {
+            font-family: 'Poppins', sans-serif;
+            padding-bottom: 80px; /* Space for bottom navigation */
+        }
+        .playfair {
+            font-family: 'Playfair Display', serif;
+        }
+        .menu-category.active {
+            background-color: #8B0000;
+            color: white;
+        }
+        .menu-item-card {
+            transition: all 0.3s ease;
+        }
+        .menu-item-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        .bottom-nav {
+            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
+        }
+        .nav-item.active {
+            color: #8B0000;
+        }
+        .nav-item.active svg {
+            fill: #8B0000;
+        }
+        .cart-notification {
+            animation: pop 0.5s ease;
+        }
+        @keyframes pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="bg-white shadow-sm sticky top-0 z-10">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <a href="home.html" class="flex items-center">
+                <h1 class="playfair text-2xl font-bold text-primary">CHOP<span class="text-secondary">SWIFT</span></h1>
+            </a>
+            <div class="hidden md:flex space-x-8">
+                <a href="home.html" class="text-gray-600 hover:text-primary transition">Home</a>
+                <a href="menu.html" class="text-primary font-medium">Menu</a>
+                <a href="#" class="text-gray-600 hover:text-primary transition">About</a>
+                <a href="#" class="text-gray-600 hover:text-primary transition">Contact</a>
+            </div>
+            <div class="flex items-center space-x-4">
+                <div class="relative">
+                    <button id="cart-btn" class="relative p-2 text-gray-600 hover:text-primary">
+                        <i class="fas fa-shopping-cart text-xl"></i>
+                        <span id="cart-count" class="absolute -top-1 -right-1 bg-primary text-white text-xs rounded-full h-5 w-5 flex items-center justify-center hidden">0</span>
+                    </button>
+                </div>
+                <button class="md:hidden">
+                    <i class="fas fa-bars text-xl text-primary"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Menu Header -->
+    <section class="bg-primary text-white py-12">
+        <div class="container mx-auto px-4 text-center">
+            <h2 class="playfair text-4xl font-bold mb-4">Our Menu</h2>
+            <p class="text-xl max-w-2xl mx-auto">Discover our chef-crafted dishes made with the finest ingredients and served with lightning speed.</p>
+        </div>
+    </section>
+
+    <!-- Menu Categories -->
+    <div class="sticky top-16 bg-white shadow-sm z-10">
+        <div class="container mx-auto px-4 py-4 overflow-x-auto">
+            <div class="flex space-x-4 whitespace-nowrap">
+                <button class="menu-category active px-6 py-2 rounded-full transition" data-category="all">All Items</button>
+                <button class="menu-category px-6 py-2 rounded-full bg-gray-100 transition" data-category="starters">Starters</button>
+                <button class="menu-category px-6 py-2 rounded-full bg-gray-100 transition" data-category="mains">Main Courses</button>
+                <button class="menu-category px-6 py-2 rounded-full bg-gray-100 transition" data-category="burgers">Burgers</button>
+                <button class="menu-category px-6 py-2 rounded-full bg-gray-100 transition" data-category="salads">Salads</button>
+                <button class="menu-category px-6 py-2 rounded-full bg-gray-100 transition" data-category="desserts">Desserts</button>
+                <button class="menu-category px-6 py-2 rounded-full bg-gray-100 transition" data-category="drinks">Drinks</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Menu Items -->
+    <section class="py-12">
+        <div class="container mx-auto px-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Starter Items -->
+                <div class="menu-item bg-white rounded-2xl overflow-hidden menu-item-card" data-category="starters">
+                    <img src="https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80" alt="Truffle Arancini" class="w-full h-48 object-cover">
+                    <div class="p-6">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="text-xl font-semibold">Truffle Arancini</h3>
+                            <span class="text-primary font-bold text-lg">$9.99</span>
+                        </div>
+                        <p class="text-gray-600 mb-4">Crispy risotto balls with black truffle and melted mozzarella</p>
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center">
+                                <button class="text-primary">
+                                    <i class="fas fa-minus-circle"></i>
+                                </button>
+                                <span class="mx-2">0</span>
+                                <button class="text-primary">
+                                    <i class="fas fa-plus-circle"></i>
+                                </button>
+                            </div>
+                            <button class="add-to-cart bg-primary text-white px-4 py-2 rounded-full text-sm hover:bg-primaryDark transition" data-item="Truffle Arancini" data-price="9.99">
+                                Add to Cart
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="menu-item bg-white rounded-2xl overflow-hidden menu-item-card" data-category="starters">
+                    <img src="https://images.unsplash.com/photo-1611270629569-8b357cb3082c?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80" alt="Buffalo Wings" class="w-full h-48 object-cover">
+                    <div class="p-6">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="text-xl font-semibold">Buffalo Wings</h3>
+                            <span class="text-primary font-bold text-lg">$11.99</span>
+                        </div>
+                        <p class="text-gray-600 mb-4">Crispy chicken wings with spicy buffalo sauce and blue cheese dip</p>
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center">
+                                <button class="text-primary">
+                                    <i class="fas fa-minus-circle"></i>
+                                </button>
+                                <span class="mx-2">0</span>
+                                <button class="text-primary">
+                                    <i class="fas fa-plus-circle"></i>
+                                </button>
+                            </div>
+                            <button class="add-to-cart bg-primary text-white px-4 py-2 rounded-full text-sm hover:bg-primaryDark transition" data-item="Buffalo Wings" data-price="11.99">
+                                Add to Cart
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Course Items -->
+                <div class="menu-item bg-white rounded-2xl overflow-hidden menu-item-card" data-category="mains">
+                    <img src="https://images.unsplash.com/photo-1621996346565-e3dbc353d2e5?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80" alt="Truffle Mushroom Pasta" class="w-full h-48 object-cover">
+                    <div class="p-6">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="text-xl font-semibold">Truffle Mushroom Pasta</h3>
+                            <span class="text-primary font-bold text-lg">$16.99</span>
+                        </div>
+                        <p class="text-gray-600 mb-4">Fresh pasta, wild mushrooms, truffle oil, and parmesan</p>
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center">
+                                <button class="text-primary">
+                                    <i class="fas fa-minus-circle"></i>
+                                </button>
+                                <span class="mx-2">0</span>
+                                <button class="text-primary">
+                                    <i class="fas fa-plus-circle"></i>
+                                </button>
+                            </div>
+                            <button class="add-to-cart bg-primary text-white px-4 py-2 rounded-full text-sm hover:bg-primaryDark transition" data-item="Truffle Mushroom Pasta" data-price="16.99">
+                                Add to Cart
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="menu-item bg-white rounded-2xl overflow-hidden menu-item-card" data-category="mains">
+                    <img src="https://images.unsplash.com/photo-1606755962773-d324e0a13086?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80" alt="Grilled Salmon" class="w-full h-48 object-cover">
+                    <div class="p-6">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="text-xl font-semibold">Grilled Salmon</h3>
+                            <span class="text-primary font-bold text-lg">$18.99</span>
+                        </div>
+                        <p class="text-gray-600 mb-4">Atlantic salmon with lemon butter sauce and seasonal vegetables</p>
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center">
+                                <button class="text-primary">
+                                    <i class="fas fa-minus-circle"></i>
+                                </button>
+                                <span class="mx-2">0</span>
+                                <button class="text-primary">
+                                    <i class="fas fa-plus-circle"></i>
+                                </button>
+                            </div>
+                            <button class="add-to-cart bg-primary text-white px-4 py-2 rounded-full text-sm hover:bg-primaryDark transition" data-item="Grilled Salmon" data-price="18.99">
+                                Add to Cart
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Burger Items -->
+                <div class="menu-item bg-white rounded-2xl overflow-hidden menu-item-card" data-category="burgers">
+                    <img src="https://images.unsplash.com/photo-1551782450-a2132b4ba21d?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80" alt="Swift Classic Burger" class="w-full h-48 object-cover">
+                    <div class="p-6">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="text-xl font-semibold">Swift Classic Burger</h3>
+                            <span class="text-primary font-bold text-lg">$14.99</span>
+                        </div>
+                        <p class="text-gray-600 mb-4">Angus beef, aged cheddar, caramelized onions, special sauce</p>
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center">
+                                <button class="text-primary">
+                                    <i class="fas fa-minus-circle"></i>
+                                </button>
+                                <span class="mx-2">0</span>
+                                <button class="text-primary">
+                                    <i class="fas fa-plus-circle"></i>
+                                </button>
+                            </div>
+                            <button class="add-to-cart bg-primary text-white px-4 py-2 rounded-full text-sm hover:bg-primaryDark transition" data-item="Swift Classic Burger" data-price="14.99">
+                                Add to Cart
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="menu-item bg-white rounded-2xl overflow-hidden menu-item-card" data-category="burgers">
+                    <img src="https://images.unsplash.com/photo-1551782450-a2132b4ba21d?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80" alt="Truffle Burger" class="w-full h-48 object-cover">
+                    <div class="p-6">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="text-xl font-semibold">Truffle Burger</h3>
+                            <span class="text-primary font-bold text-lg">$16.99</span>
+                        </div>
+                        <p class="text-gray-600 mb-4">Wagyu beef, truffle aioli, wild mushrooms, brioche bun</p>
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center">
+                                <button class="text-primary">
+                                    <i class="fas fa-minus-circle"></i>
+                                </button>
+                                <span class="mx-2">0</span>
+                                <button class="text-primary">
+                                    <i class="fas fa-plus-circle"></i>
+                                </button>
+                            </div>
+                            <button class="add-to-cart bg-primary text-white px-4 py-2 rounded-full text-sm hover:bg-primaryDark transition" data-item="Truffle Burger" data-price="16.99">
+                                Add to Cart
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Additional items would follow the same pattern -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Cart Sidebar (hidden by default) -->
+    <div id="cart-sidebar" class="fixed top-0 right-0 h-full w-full md:w-96 bg-white shadow-2xl z-20 transform translate-x-full transition-transform duration-300">
+        <div class="p-6 h-full flex flex-col">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-bold">Your Order</h3>
+                <button id="close-cart" class="text-gray-500 hover:text-primary">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div id="cart-items" class="flex-grow overflow-y-auto mb-4">
+                <!-- Cart items will be added here dynamically -->
+                <p class="text-gray-500 text-center py-8">Your cart is empty</p>
+            </div>
+            
+            <div class="border-t pt-4">
+                <div class="flex justify-between mb-4">
+                    <span class="font-semibold">Subtotal:</span>
+                    <span id="cart-subtotal">$0.00</span>
+                </div>
+                <div class="flex justify-between mb-4">
+                    <span class="font-semibold">Tax (8%):</span>
+                    <span id="cart-tax">$0.00</span>
+                </div>
+                <div class="flex justify-between mb-6 text-lg font-bold">
+                    <span>Total:</span>
+                    <span id="cart-total">$0.00</span>
+                </div>
+                <a href="checkout.html" class="block w-full bg-primary text-white text-center py-3 rounded-lg font-semibold hover:bg-primaryDark transition">
+                    Checkout
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav fixed bottom-0 left-0 right-0 bg-white flex justify-around items-center py-3 z-10">
+        <a href="home.html" class="nav-item flex flex-col items-center text-gray-500">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-1" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+            </svg>
+            <span class="text-xs">Home</span>
+        </a>
+        <a href="menu.html" class="nav-item active flex flex-col items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+            <span class="text-xs">Menu</span>
+        </a>
+        <a href="checkout.html" class="nav-item flex flex-col items-center text-gray-500">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            <span class="text-xs">Order</span>
+        </a>
+        <a href="#" class="nav-item flex flex-col items-center text-gray-500">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+            <span class="text-xs">Profile</span>
+        </a>
+    </nav>
+
+    <script>
+        // Cart functionality
+        let cart = [];
+        const cartCount = document.getElementById('cart-count');
+        const cartBtn = document.getElementById('cart-btn');
+        const cartSidebar = document.getElementById('cart-sidebar');
+        const closeCart = document.getElementById('close-cart');
+        const cartItems = document.getElementById('cart-items');
+        const cartSubtotal = document.getElementById('cart-subtotal');
+        const cartTax = document.getElementById('cart-tax');
+        const cartTotal = document.getElementById('cart-total');
+
+        // Add to cart buttons
+        document.querySelectorAll('.add-to-cart').forEach(button => {
+            button.addEventListener('click', () => {
+                const item = button.getAttribute('data-item');
+                const price = parseFloat(button.getAttribute('data-price'));
+                
+                // Add to cart
+                cart.push({ item, price });
+                
+                // Update cart count
+                cartCount.textContent = cart.length;
+                cartCount.classList.remove('hidden');
+                
+                // Show notification
+                cartCount.classList.add('cart-notification');
+                setTimeout(() => {
+                    cartCount.classList.remove('cart-notification');
+                }, 500);
+                
+                // Update cart display
+                updateCartDisplay();
+            });
+        });
+
+        // Toggle cart sidebar
+        cartBtn.addEventListener('click', () => {
+            cartSidebar.classList.remove('translate-x-full');
+        });
+
+        closeCart.addEventListener('click', () => {
+            cartSidebar.classList.add('translate-x-full');
+        });
+
+        // Update cart display
+        function updateCartDisplay() {
+            // Clear current items
+            cartItems.innerHTML = '';
+            
+            if (cart.length === 0) {
+                cartItems.innerHTML = '<p class="text-gray-500 text-center py-8">Your cart is empty</p>';
+                cartSubtotal.textContent = '$0.00';
+                cartTax.textContent = '$0.00';
+                cartTotal.textContent = '$0.00';
+                return;
+            }
+            
+            // Calculate totals
+            const subtotal = cart.reduce((total, item) => total + item.price, 0);
+            const tax = subtotal * 0.08;
+            const total = subtotal + tax;
+            
+            cartSubtotal.textContent = `$${subtotal.toFixed(2)}`;
+            cartTax.textContent = `$${tax.toFixed(2)}`;
+            cartTotal.textContent = `$${total.toFixed(2)}`;
+            
+            // Add items to cart display
+            const itemCounts = {};
+            cart.forEach(item => {
+                if (!itemCounts[item.item]) {
+                    itemCounts[item.item] = { count: 1, price: item.price };
+                } else {
+                    itemCounts[item.item].count++;
+                }
+            });
+            
+            Object.keys(itemCounts).forEach(itemName => {
+                const { count, price } = itemCounts[itemName];
+                const itemTotal = count * price;
+                
+                const cartItem = document.createElement('div');
+                cartItem.className = 'flex justify-between items-center py-3 border-b';
+                cartItem.innerHTML = `
+                    <div>
+                        <h4 class="font-semibold">${itemName}</h4>
+                        <p class="text-gray-600 text-sm">$${price.toFixed(2)} × ${count}</p>
+                    </div>
+                    <span class="font-semibold">$${itemTotal.toFixed(2)}</span>
+                `;
+                
+                cartItems.appendChild(cartItem);
+            });
+        }
+
+        // Category filtering
+        document.querySelectorAll('.menu-category').forEach(button => {
+            button.addEventListener('click', () => {
+                // Update active button
+                document.querySelectorAll('.menu-category').forEach(btn => {
+                    btn.classList.remove('active', 'text-white');
+                    btn.classList.add('bg-gray-100');
+                });
+                button.classList.add('active', 'text-white');
+                button.classList.remove('bg-gray-100');
+                
+                const category = button.getAttribute('data-category');
+                
+                // Show/hide menu items
+                document.querySelectorAll('.menu-item').forEach(item => {
+                    if (category === 'all' || item.getAttribute('data-category') === category) {
+                        item.classList.remove('hidden');
+                    } else {
+                        item.classList.add('hidden');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

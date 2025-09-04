@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>ChopSwift • Lead City University</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Boxicons Icons -->
+  <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+
+  <!-- Paystack Inline Payment Script -->
+  <script src="https://js.paystack.co/v1/inline.js"></script>
+
+  <!-- Firebase SDK Modules -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getFirestore, doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    // Firebase Configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyDaQFXtOCIIichbxHy2mXEkYdA2k_P_TWc",
+      authDomain: "blog-28cb6.firebaseapp.com",
+      projectId: "blog-28cb6",
+      storageBucket: "blog-28cb6.firebasestorage.app",
+      messagingSenderId: "299460556471",
+      appId: "1:299460556471:web:4e0f39dd8a878657543f32"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth();
+    const db = getFirestore();
+
+    // Auth state observer
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = "../index.html";
+        return;
+      }
+
+      try {
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          window.chopSwiftUserData = {
+            uid: user.uid,
+            name: userData.name || "User",
+            email: userData.email || "",
+            phone: userData.phone || "",
+            balance: userData.balance || 2500,
+            recentOrders: userData.recentOrders || [],
+            notifications: userData.notifications || [
+              { id: 1, msg: "🎉 10% off your first order at Chicken Republic!" },
+              { id: 2, msg: "🚚 Your recent order has been dispatched." }
+            ]
+          };
+          initApp();
+        } else {
+          showAlert("Your profile was not found. Please sign up again.");
+        }
+      } catch (err) {
+        console.error("Firestore access denied:", err);
+        if (err.message.includes("permission-denied")) {
+          showAlert("Access denied: Please check Firestore rules or contact support.");
+        } else {
+          showAlert("Failed to load profile: " + err.message);
+        }
+      }
+    });
+  </script>
+
+  <!-- Custom Styles -->
+  <style>
+    :root {
+      --primary: #16A34A;
+      --primary-dark: #15803D;
+      --soft: #F4F6F5;
+      --gray: #6B7280;
+    }
+
+    html, body {
+      background: #fff;
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    .hide-scroll::-webkit-scrollbar {
+      display: none;
+    }
+
+    .hide-scroll {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    .shadow-card {
+      box-shadow: 0 8px 24px rgba(2, 6, 23, 0.08);
+    }
+
+    .page {
+      display: none;
+    }
+
+    .page.active {
+      display: block;
+    }
+
+    .alert-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .alert-box {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      max-width: 300px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+
+    .alert-btn {
+      margin-top: 12px;
+      padding: 8px 16px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 60px;
+      background: white;
+      border-top: 1px solid #eee;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      z-index: 50;
+    }
+
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-size: 12px;
+      color: var(--gray);
+    }
+
+    .nav-item.active,
+    .nav-item:hover {
+      color: var(--primary);
+    }
+
+    .nav-item i {
+      font-size: 1.3rem;
+      margin-bottom: 2px;
+    }
+  </style>
+</head>
+<body class="min-h-screen text-gray-900 pb-28 bg-gray-50">
+
+  <!-- LOGIN REDIRECT LOADER -->
+  <div id="loginRedirect" class="fixed inset-0 bg-white z-50 flex items-center justify-center hidden">
+    <p class="text-lg">Redirecting to login...</p>
+  </div>
+
+  <!-- BOTTOM NAVIGATION BAR -->
+  <div class="bottom-nav">
+    <button class="nav-item active" data-page="homePage">
+      <i class='bx bxs-home'></i> <span>Home</span>
+    </button>
+    <button class="nav-item" data-page="categoriesPage">
+      <i class='bx bxs-category'></i> <span>Categories</span>
+    </button>
+    <button class="nav-item" data-page="ordersPage">
+      <i class='bx bxs-shopping-bag'></i> <span>Orders</span>
+    </button>
+    <button class="nav-item" data-page="profilePage">
+      <i class='bx bxs-user'></i> <span>Profile</span>
+    </button>
+  </div>
+
+  <!-- HEADER -->
+  <header class="sticky top-0 z-50 bg-white/95 backdrop-blur border-b">
+    <div class="flex items-center justify-between px-4 py-3">
+      <button id="locBtn" class="flex items-center gap-2" aria-label="Change location">
+        <i class='bx bx-map text-[22px] text-[var(--primary)]'></i>
+        <div class="text-left leading-tight">
+          <p class="text-[11px] text-gray-500">Delivering to</p>
+          <p id="currentLocation" class="font-semibold">Lead City University</p>
+        </div>
+      </button>
+      <div class="flex items-center gap-3">
+        <button id="promoBtn" class="w-9 h-9 rounded-full bg-[var(--soft)] grid place-items-center" aria-label="Promotions">
+          <i class='bx bx-purchase-tag text-lg'></i>
+        </button>
+        <div class="relative">
+          <button id="notifBtn" class="w-9 h-9 rounded-full bg-[var(--soft)] grid place-items-center" aria-label="Notifications">
+            <i class='bx bx-bell text-lg'></i>
+          </button>
+          <span id="notifDot" class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-red-500"></span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- SEARCH BAR -->
+  <section class="px-4 pt-3">
+    <div class="flex items-center gap-3 bg-gray-100 rounded-full px-4 py-2.5 shadow-sm">
+      <i class='bx bx-search text-gray-500 text-lg'></i>
+      <input id="searchInput" type="search" placeholder="Search meals, restaurants..." class="bg-transparent w-full outline-none text-sm" />
+      <button id="searchBtn" class="text-xs text-[var(--primary)] font-medium px-2 py-1 rounded-full">Search</button>
+    </div>
+  </section>
+
+  <!-- HOME PAGE -->
+  <main id="homePage" class="page active">
+    <section class="px-4 mt-4">
+      <h2 id="welcomeMessage" class="text-lg font-semibold">Welcome, <span id="userName">User</span></h2>
+      <p id="userBalance" class="text-sm text-gray-600 mt-1">Wallet: <span class="font-medium">₦0</span></p>
+    </section>
+
+    <section class="px-4 mt-4">
+      <div class="flex items-center justify-between mb-2">
+        <h2 class="text-lg font-semibold">Categories</h2>
+        <button id="seeAllCategoriesBtn" class="text-[var(--primary)] text-sm font-medium">See all</button>
+      </div>
+      <div id="catRow" class="hide-scroll overflow-x-auto flex gap-3 pb-1"></div>
+    </section>
+
+    <section class="px-4 mt-4">
+      <div class="bg-gradient-to-r from-[var(--primary)] to-[var(--primary-dark)] text-white rounded-2xl p-4 shadow-card mx-4 flex items-center justify-between">
+        <div>
+          <p class="text-sm opacity-90">Exclusive for you</p>
+          <p id="specialOfferText" class="text-lg font-semibold">Loading deal...</p>
+        </div>
+        <i id="specialOfferIcon" class='bx bxs-truck text-4xl opacity-90'></i>
+      </div>
+    </section>
+
+    <section class="px-4 mt-6">
+      <div class="flex items-center justify-between mb-2">
+        <h2 class="text-lg font-semibold">Popular on ChopSwift</h2>
+        <a href="#" id="viewMorePopular" class="text-[var(--primary)] text-sm font-medium">View more</a>
+      </div>
+      <div id="popularRow" class="hide-scroll overflow-x-auto flex gap-4 pb-2"></div>
+    </section>
+
+    <section class="px-4 mt-6">
+      <div class="flex items-center justify-between mb-2">
+        <h2 class="text-lg font-semibold">Restaurants near you</h2>
+        <a href="#" id="viewAllRests" class="text-[var(--primary)] text-sm font-medium">See all</a>
+      </div>
+      <div id="restaurantList" class="space-y-4 pb-12"></div>
+    </section>
+
+    <section class="px-4 mt-6">
+      <h2 class="text-lg font-semibold mb-3">Recent Orders</h2>
+      <div id="recentOrders" class="space-y-3"></div>
+    </section>
+  </main>
+
+  <!-- CATEGORIES PAGE -->
+  <section id="categoriesPage" class="page px-4">
+    <div class="flex items-center gap-3 mb-3">
+      <button id="backFromCategories" class="w-9 h-9 rounded-full bg-[var(--soft)] grid place-items-center"><i class='bx bx-left-arrow-alt'></i></button>
+      <h2 class="text-lg font-semibold">Categories</h2>
+    </div>
+    <div id="categoriesGrid" class="grid grid-cols-3 gap-3 mb-6"></div>
+    <div id="categoryMeals" class="mt-2 space-y-4"></div>
+  </section>
+
+  <!-- RESTAURANT PAGE -->
+  <section id="restaurantPage" class="page px-4">
+    <div class="flex items-center justify-between mb-3">
+      <div class="flex items-center gap-3">
+        <button id="backFromRestaurant" class="w-9 h-9 rounded-full bg-[var(--soft)] grid place-items-center"><i class='bx bx-left-arrow-alt'></i></button>
+        <div>
+          <h3 id="restPageTitle" class="font-semibold">Restaurant</h3>
+          <p id="restPageMeta" class="text-xs text-gray-500">ETA • Fee</p>
+        </div>
+      </div>
+      <button id="restFavorite" class="w-9 h-9 rounded-full bg-[var(--soft)] grid place-items-center"><i class='bx bx-heart'></i></button>
+    </div>
+    <div id="restPageMenu" class="space-y-4 pb-12"></div>
+  </section>
+
+  <!-- CHECKOUT PAGE -->
+  <section id="ordersPage" class="page px-4">
+    <h2 class="text-lg font-semibold mb-4 mt-4">Checkout</h2>
+
+    <!-- Cart Items -->
+    <div id="checkoutItemList" class="bg-white p-4 rounded-xl shadow-card space-y-3 mb-6">
+      <p class="text-gray-500 text-center">Your cart is empty</p>
+    </div>
+
+    <!-- Summary -->
+    <div class="bg-white p-4 rounded-xl shadow-card space-y-2 mb-6">
+      <div class="flex justify-between">
+        <p>Subtotal</p>
+        <p id="checkoutSubtotal">₦0</p>
+      </div>
+      <div class="flex justify-between">
+        <p>Delivery Fee</p>
+        <p id="deliveryFee">₦0</p>
+      </div>
+      <hr class="my-2">
+      <div class="flex justify-between font-semibold">
+        <p>Total</p>
+        <p id="checkoutTotal">₦0</p>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="space-y-3 pb-12">
+      <button id="payNowBtn" class="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-xl mt-3 flex items-center justify-center gap-2">
+        <i class='bx bxs-credit-card'></i> Pay Now with Paystack
+      </button>
+      <button id="backToCartBtn" class="w-full py-2 border rounded-xl">Back to Cart</button>
+      <button id="clearCartBtn" class="w-full py-2 text-red-600 bg-red-50 rounded-xl">Clear Cart</button>
+    </div>
+  </section>
+
+  <!-- PROFILE PAGE -->
+  <section id="profilePage" class="page px-4">
+    <h2 class="text-lg font-semibold mb-4 mt-4 flex justify-between items-center">
+      Profile
+      <button id="editProfileBtn" class="text-sm bg-[var(--primary)] text-white px-3 py-1 rounded-lg">Edit</button>
+    </h2>
+    <div class="bg-white p-4 rounded-xl shadow-card space-y-4">
+      <div>
+        <p class="text-sm text-gray-500">Full Name</p>
+        <p class="font-medium" id="profileName" contenteditable="false">Loading...</p>
+      </div>
+      <div>
+        <p class="text-sm text-gray-500">Email Address</p>
+        <p class="font-medium" id="profileEmail">-</p>
+      </div>
+      <div>
+        <p class="text-sm text-gray-500">Phone Number</p>
+        <p class="font-medium" id="profilePhone" contenteditable="false">-</p>
+      </div>
+      <div>
+        <p class="text-sm text-gray-500">Campus Location</p>
+        <p class="font-medium" id="profileLocation" contenteditable="false">Lead City University</p>
+      </div>
+      <div>
+        <p class="text-sm text-gray-500">Order History</p>
+        <p class="font-medium" id="profileOrderCount">0 orders</p>
+      </div>
+      <div>
+        <p class="text-sm text-gray-500">Wallet Balance</p>
+        <p class="font-medium">₦<span id="profileBalance">0</span></p>
+      </div>
+      <hr class="my-4">
+      <button id="saveProfileBtn" class="hidden w-full py-3 bg-[var(--primary)] text-white font-medium rounded-xl">Save Changes</button>
+      <button id="logoutBtn" class="w-full py-3 bg-red-500 text-white font-medium rounded-xl">Logout</button>
+    </div>
+  </section>
+
+  <!-- ALL RESTAURANTS PAGE -->
+  <section id="restaurantsPage" class="page px-4">
+    <div class="flex items-center gap-3 mb-3">
+      <button id="backFromRests" class="w-9 h-9 rounded-full bg-[var(--soft)] grid place-items-center"><i class='bx bx-left-arrow-alt'></i></button>
+      <h2 class="text-lg font-semibold">All Restaurants</h2>
+    </div>
+    <div id="allRestaurantsList" class="space-y-4 pb-12"></div>
+  </section>
+
+  <!-- POPULAR MEALS PAGE -->
+  <section id="popularPage" class="page px-4">
+    <div class="flex items-center gap-3 mb-3">
+      <button id="backFromPopular" class="w-9 h-9 rounded-full bg-[var(--soft)] grid place-items-center"><i class='bx bx-left-arrow-alt'></i></button>
+      <h2 class="text-lg font-semibold">Popular Meals</h2>
+    </div>
+    <div id="popularMealsList" class="space-y-4 pb-12"></div>
+  </section>
+
+  <!-- NOTIFICATIONS MODAL -->
+  <div id="notifModal" class="fixed inset-0 bg-black/40 hidden z-50 grid place-items-center">
+    <div class="bg-white rounded-2xl w-11/12 max-w-sm p-4 max-h-80 overflow-y-auto">
+      <h3 class="font-semibold mb-3">Notifications</h3>
+      <ul id="notifList" class="space-y-2"></ul>
+      <button id="closeNotifModal" class="mt-3 w-full py-2 text-white bg-[var(--primary)] rounded-xl">Close</button>
+    </div>
+  </div>
+
+  <!-- PROMO MODAL -->
+  <div id="promoModal" class="fixed inset-0 bg-black/40 hidden z-50 grid place-items-center">
+    <div class="bg-white rounded-2xl w-11/12 max-w-sm p-4">
+      <h3 class="font-semibold mb-3">Promotions</h3>
+      <p>🎉 Get 10% off at Chicken Republic with code <strong>LCU10</strong></p>
+      <button id="closePromoModal" class="mt-3 w-full py-2 text-white bg-[var(--primary)] rounded-xl">Close</button>
+    </div>
+  </div>
+
+  <!-- LOCATION MODAL -->
+  <div id="locModal" class="fixed inset-0 bg-black/40 hidden z-50 grid place-items-center">
+    <div class="bg-white rounded-2xl w-11/12 max-w-sm p-4">
+      <h3 class="font-semibold mb-3">Select Location</h3>
+      <ul id="locList" class="space-y-2 max-h-80 overflow-y-auto"></ul>
+      <button id="closeLocModal" class="mt-3 w-full py-2 text-white bg-[var(--primary)] rounded-xl">Close</button>
+    </div>
+  </div>
+
+  <!-- CART DRAWER -->
+  <div id="cartDrawer" class="fixed inset-0 bg-black/40 hidden z-50 grid place-items-end">
+    <div class="bg-white w-full max-w-sm rounded-t-2xl p-4">
+      <h3 class="font-semibold mb-3">Cart</h3>
+      <div id="cartItems" class="space-y-3 max-h-80 overflow-y-auto"></div>
+      <div class="flex justify-between mt-4 pt-3 border-t">
+        <p class="font-semibold">Subtotal</p>
+        <p id="cartSubtotal" class="font-semibold">₦0</p>
+      </div>
+      <button id="checkoutBtn" class="mt-3 w-full py-3 text-white bg-[var(--primary)] rounded-xl">Checkout</button>
+      <button id="closeCartDrawer" class="mt-2 w-full py-2 border rounded-xl">Close</button>
+    </div>
+    <button id="proceedToCheckout" class="mt-2 w-full py-2 text-[var(--primary)] border rounded-xl">Review Order</button>
+  </div>
+
+  <!-- CUSTOM ALERT MODAL -->
+  <div id="alertModal" class="alert-modal hidden">
+    <div class="alert-box">
+      <p id="alertMessage">Message</p>
+      <button class="alert-btn" id="alertBtn">OK</button>
+    </div>
+  </div>
+
+  <!-- FLOATING CART BUTTON -->
+  <button id="cartFab" class="fixed bottom-20 right-4 z-50 bg-[var(--primary)] text-white w-14 h-14 rounded-full shadow-card grid place-items-center">
+    <i class='bx bx-shopping-bag text-2xl'></i>
+    <span id="cartCount" class="absolute top-1 right-1 text-xs font-bold bg-red-500 w-5 h-5 rounded-full flex items-center justify-center">0</span>
+  </button>
+
+  <!-- SCRIPTS -->
+  <script>
+    // Application State
+    const state = {
+      user: null,
+      location: "Lead City University",
+      locations: [
+        "Lead City University",
+        "Faculty of Engineering",
+        "College of Medicine",
+        "Senate Building",
+        "Law Theatre",
+        "Enterprise",
+        "Lecture Hub",
+        "FONAS",
+        "Lecture Room",
+        "Admin Block",
+        "Library Complex",
+        "Sports Complex"
+      ],
+      cart: [],
+      categories: [
+        { id: 1, name: "Fast Food", icon: "🍗" },
+        { id: 2, name: "Grilled", icon: "🔥" },
+        { id: 3, name: "Drinks", icon: "🥤" },
+        { id: 4, name: "Rice", icon: "🍚" },
+        { id: 5, name: "Snacks", icon: "🍟" },
+        { id: 6, name: "Soups & Swallows", icon: "🍲" }
+      ],
+      restaurants: [
+        {
+          id: 1,
+          name: "Chicken Republic",
+          eta: "20-25 min",
+          fee: 500,
+          menu: [
+            { id: 101, name: "Fried Rice & Chicken (Chicken Republic)", price: 1500, cat: 4, img: "../images/fried-rice-chicken-rep.jpeg" },
+            { id: 102, name: "Jollof Rice & Chicken (Chicken Republic)", price: 1500, cat: 4, img: "../images/jollof Rice & Chicken.jpeg" },
+            { id: 103, name: "Chicken pie (Chicken Republic)", price: 1200, cat: 5, img: "../images/chickenpie-chicken-rep.jpeg" },
+            { id: 104, name: "Meat pie (Chicken Republic)", price: 1200, cat: 5, img: "../images/Meatpie-chicken-rep.jpeg" },
+            { id: 105, name: "Coca-Cola (Chicken Republic)", price: 900, cat: 3, img: "../images/coca-cola.jpeg" },
+            { id: 106, name: "Fanta (Chicken Republic)", price: 900, cat: 3, img: "../images/fanta.jpeg" },
+            { id: 107, name: "Mineral water (Chicken Republic)", price: 500, cat: 3, img: "../images/eva.jpeg" },
+            { id: 108, name: "Sandwich (Chicken Republic)", price: 2800, cat: 1, img: "../images/sandwich.jpeg" },
+            { id: 109, name: "Coleslaw (Chicken Republic)", price: 700, cat: 1, img: "../images/coleslaw.jpeg" }
+          ]
+        },
+        {
+          id: 2,
+          name: "Item 7 Go",
+          eta: "35-40 min",
+          fee: 800,
+          menu: [
+            { id: 201, name: "Rice & Chicken (Item 7 Go)", price: 3000, cat: 4, img: "../images/rice&chiken-item 7.jpeg" },
+            { id: 202, name: "Chicken Shawarma (Item 7 Go)", price: 3000, cat: 1, img: "../images/ChickenShawama-item 7.jpeg" },
+            { id: 203, name: "Beef Shawarma (Item 7 Go)", price: 2800, cat: 1, img: "../images/BeefShawama-item 7.jpeg" },
+            { id: 204, name: "Rice & Croaker (Item 7 Go)", price: 3800, cat: 4, img: "../images/rice&croaker.jpeg" },
+            { id: 205, name: "Coleslaw (Item 7 Go)", price: 500, cat: 1, img: "../images/coleslaw.jpeg" }
+          ]
+        },
+        {
+          id: 3,
+          name: "KFC",
+          eta: "25-30 min",
+          fee: 600,
+          menu: [
+            { id: 301, name: "Kfc Spicy Rice-Lrg", price: 3700, cat: 4, img: "../images/spicy rice-kfc.jpeg" },
+            { id: 302, name: "Everyday Value Meal (KFC)", price: 3300, cat: 6, img: "../images/everyday-value-kfc.jpeg" },
+            { id: 303, name: "Kfc Hot wings 3pics", price: 5300, cat: 2, img: "../images/hot-wings-kfc.jpeg" },
+            { id: 304, name: "Cob-or 1 pics (KFC)", price: 3700, cat: 2, img: "../images/cob-or-kfc.jpeg" },
+            { id: 305, name: "Crspy Strips 5 pics (KFC)", price: 8100, cat: 2, img: "../images/crspy-strips.jpeg" },
+            { id: 306, name: "MoiMoi-Reg (KFC) ", price: 3000, cat: 6, img: "../images/moimoi-kfc.jpeg" },
+            { id: 307, name: "Zinger Buger (KFC)", price: 6700, cat: 5, img: "../images/zinger-kfc.jpeg" },
+            { id: 308, name: "Yam Fries (KFC)", price: 3200, cat: 5, img: "../images/yam-fries.jpeg" },
+            { id: 309, name: "Pepsi 500ml (KFC)", price: 1700, cat: 3, img: "../images/pepsi.jpeg" }
+          ]
+        }
+      ]
+    };
+
+    // Utility Selector
+    const $ = (selector) => document.querySelector(selector);
+
+    // Show Custom Alert
+    function showAlert(msg) {
+      $('#alertMessage').textContent = msg;
+      $('#alertModal').classList.remove('hidden');
+    }
+
+    // Close Alert
+    $('#alertBtn').onclick = () => $('#alertModal').classList.add('hidden');
+
+    // Show Page by ID
+    function showPage(id) {
+      document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+      $(`#${id}`).classList.add('active');
+    }
+
+    // Load saved location from localStorage
+    const savedLocation = localStorage.getItem('savedLocation');
+    if (savedLocation && state.locations.includes(savedLocation)) {
+      state.location = savedLocation;
+    }
+
+    // Bottom Navigation Logic
+    document.querySelectorAll('.nav-item').forEach(button => {
+      button.addEventListener('click', () => {
+        document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
+        button.classList.add('active');
+        const page = button.dataset.page;
+        if (page === 'ordersPage') updateCheckout();
+        showPage(page);
+      });
+    });
+
+    // Initialize App
+    async function initApp() {
+      state.user = window.chopSwiftUserData;
+      $('#userName').textContent = state.user.name;
+      $('#userBalance span').textContent = `₦${state.user.balance.toLocaleString()}`;
+      $('#profileName').textContent = state.user.name;
+      $('#profileEmail').textContent = state.user.email || "Not provided";
+      $('#profilePhone').textContent = state.user.phone ? `+234 ${state.user.phone.slice(-10)}` : "Not provided";
+      $('#profileLocation').textContent = state.location;
+      $('#profileBalance').textContent = state.user.balance.toLocaleString();
+      const orderCount = (state.user.recentOrders || []).length;
+      $('#profileOrderCount').textContent = `${orderCount} order${orderCount === 1 ? '' : 's'}`;
+      $('#currentLocation').textContent = state.location;
+
+      loadCartFromStorage();
+      updateCart();
+      updateCheckout();
+      renderNotifications();
+      updateSpecialOffer();
+      renderRecentOrders();
+      renderCategoriesRow();
+      renderPopular();
+      renderRestaurants();
+      renderCategoriesGrid();
+
+      // Daily offer alert
+      if (!sessionStorage.getItem('offerSeen')) {
+        showAlert("🎉 New offer just for you! Check 'Exclusive for you' banner.");
+        sessionStorage.setItem('offerSeen', 'true');
+      }
+
+      const lastReset = localStorage.getItem('offerReset');
+      const today = new Date().toDateString();
+      if (!lastReset || lastReset !== today) {
+        localStorage.setItem('offerReset', today);
+        sessionStorage.removeItem('offerSeen');
+      }
+    }
+
+    // Edit Profile
+    const editBtn = $('#editProfileBtn');
+    const saveBtn = $('#saveProfileBtn');
+    const editableFields = [
+      { display: 'profileName', storage: 'name' },
+      { display: 'profilePhone', storage: 'phone' },
+      { display: 'profileLocation', storage: 'location' }
+    ];
+
+    editBtn.onclick = () => {
+      editableFields.forEach(field => {
+        const el = $(`#${field.display}`);
+        el.contentEditable = true;
+        el.classList.add('bg-gray-100', 'px-1', 'rounded');
+      });
+      editBtn.classList.add('hidden');
+      saveBtn.classList.remove('hidden');
+    };
+
+    saveBtn.onclick = async () => {
+      const updates = {};
+      editableFields.forEach(field => {
+        const el = $(`#${field.display}`);
+        const value = el.textContent.trim();
+        if (field.storage === 'location') {
+          if (state.locations.includes(value)) {
+            state.location = value;
+            $('#currentLocation').textContent = value;
+          } else {
+            showAlert('Invalid location.');
+            el.textContent = state.location;
+            return;
+          }
+        } else {
+          state.user[field.storage] = value;
+          updates[field.storage] = value;
+        }
+        el.contentEditable = false;
+        el.classList.remove('bg-gray-100', 'px-1', 'rounded');
+      });
+
+      const { getAuth } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
+      const { getFirestore, doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+      const auth = getAuth();
+      const db = getFirestore();
+      const user = auth.currentUser;
+
+      if (user && Object.keys(updates).length > 0) {
+        await updateDoc(doc(db, "users", user.uid), updates);
+        showAlert("Profile saved!");
+      }
+
+      saveBtn.classList.add('hidden');
+      editBtn.classList.remove('hidden');
+    };
+
+    // Render Notifications
+    function renderNotifications() {
+      const list = $('#notifList');
+      list.innerHTML = '';
+      state.user.notifications.forEach(n => {
+        const li = document.createElement('li');
+        li.className = 'p-2 bg-gray-100 rounded';
+        li.textContent = n.msg;
+        list.appendChild(li);
+      });
+    }
+
+    // Render Recent Orders
+    function renderRecentOrders() {
+      const container = $('#recentOrders');
+      container.innerHTML = '';
+      (state.user.recentOrders || []).forEach(order => {
+        const div = document.createElement('div');
+        div.className = 'bg-white p-3 rounded-xl shadow-card';
+        div.innerHTML = `<p>${order.name}</p><p class="font-semibold">₦${order.price}</p>`;
+        container.appendChild(div);
+      });
+    }
+
+    // Update Checkout Page
+    function updateCheckout() {
+      const container = $('#checkoutItemList');
+      container.innerHTML = '';
+      if (state.cart.length === 0) {
+        container.innerHTML = '<p class="text-gray-500 text-center">Your cart is empty</p>';
+        $('#checkoutSubtotal').textContent = '₦0';
+        $('#deliveryFee').textContent = '₦0';
+        $('#checkoutTotal').textContent = '₦0';
+        return;
+      }
+
+      let subtotal = 0;
+      const restaurantFees = new Set();
+      state.cart.forEach(item => {
+        const restaurant = state.restaurants.find(r => r.menu.some(m => m.id === item.id));
+        if (restaurant) restaurantFees.add(restaurant.fee);
+        const price = item.price * item.qty;
+        subtotal += price;
+        const div = document.createElement('div');
+        div.className = 'flex justify-between items-center';
+        div.innerHTML = `
+          <div class="flex-1">
+            <p class="font-medium">${item.name}</p>
+            <p class="text-sm text-gray-500">₦${item.price} × ${item.qty}</p>
+          </div>
+          <p class="font-medium">₦${price.toLocaleString()}</p>
+        `;
+        container.appendChild(div);
+      });
+
+      let deliveryFee = Array.from(restaurantFees).reduce((sum, fee) => sum + fee, 0);
+      const total = subtotal + deliveryFee;
+
+      $('#checkoutSubtotal').textContent = `₦${subtotal.toLocaleString()}`;
+      $('#deliveryFee').textContent = `₦${deliveryFee.toLocaleString()}`;
+      $('#checkoutTotal').textContent = `₦${total.toLocaleString()}`;
+    }
+
+    // Render Categories (Row)
+    function renderCategoriesRow() {
+      const container = $('#catRow');
+      container.innerHTML = '';
+      state.categories.forEach(cat => {
+        const btn = document.createElement('button');
+        btn.className = 'px-4 py-2 bg-[var(--soft)] rounded-full text-sm font-medium flex items-center gap-1';
+        btn.innerHTML = `${cat.icon} ${cat.name}`;
+        btn.onclick = () => showCategoryMeals(cat);
+        container.appendChild(btn);
+      });
+    }
+
+    // Render Categories (Grid)
+    function renderCategoriesGrid() {
+      const container = $('#categoriesGrid');
+      container.innerHTML = '';
+      state.categories.forEach(cat => {
+        const div = document.createElement('div');
+        div.className = 'bg-[var(--soft)] p-3 rounded-lg text-center font-medium';
+        div.innerHTML = `<div class="text-2xl mb-1">${cat.icon}</div><p>${cat.name}</p>`;
+        div.onclick = () => showCategoryMeals(cat);
+        container.appendChild(div);
+      });
+    }
+
+    // Show Meals by Category
+    function showCategoryMeals(category) {
+      $('#categoryMeals').innerHTML = `<h3 class="text-lg font-semibold mb-3">${category.name}</h3>`;
+      const meals = state.restaurants.flatMap(r => r.menu).filter(m => m.cat === category.id);
+      const container = $('#categoryMeals');
+      meals.forEach(meal => {
+        const div = document.createElement('div');
+        div.className = 'bg-white p-3 rounded-xl shadow-card flex justify-between items-center';
+        div.innerHTML = `
+          <div class="flex gap-3">
+            <img src="${meal.img}" class="w-12 h-12 rounded object-cover">
+            <div>
+              <p class="font-medium">${meal.name}</p>
+              <p class="text-sm">₦${meal.price}</p>
+            </div>
+          </div>
+          <button class="add-btn text-[var(--primary)] text-sm" data-id="${meal.id}">Add</button>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    // Render Popular Meals
+    function renderPopular() {
+      const container = $('#popularRow');
+      container.innerHTML = '';
+      let allMeals = state.restaurants.flatMap(r => r.menu);
+      const seen = new Set();
+      let uniqueMeals = [];
+      allMeals.forEach(meal => {
+        const cleanName = meal.name.toLowerCase().replace(/[^a-z]/g, '');
+        if (!seen.has(cleanName)) {
+          seen.add(cleanName);
+          uniqueMeals.push(meal);
+        }
+      });
+
+      // Shuffle
+      for (let i = uniqueMeals.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [uniqueMeals[i], uniqueMeals[j]] = [uniqueMeals[j], uniqueMeals[i]];
+      }
+
+      const popular = uniqueMeals.slice(0, 6);
+      popular.forEach(meal => {
+        const div = document.createElement('div');
+        div.className = 'w-36 bg-white rounded-xl p-2 shadow-card flex-shrink-0';
+        div.innerHTML = `
+          <img src="${meal.img}" class="w-full h-20 rounded-xl object-cover mb-2">
+          <p class="font-medium text-sm">${meal.name}</p>
+          <p class="text-xs text-gray-500">₦${meal.price.toLocaleString()}</p>
+          <button class="add-btn text-[var(--primary)] text-sm" data-id="${meal.id}">Add</button>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    // Render Restaurants
+    function renderRestaurants() {
+      const container = $('#restaurantList');
+      container.innerHTML = '';
+      state.restaurants.forEach(rest => {
+        const div = document.createElement('div');
+        div.className = 'bg-white p-3 rounded-xl shadow-card flex justify-between items-center';
+        div.innerHTML = `
+          <div>
+            <p class="font-semibold">${rest.name}</p>
+            <p class="text-xs text-gray-500">${rest.eta} • ₦${rest.fee}</p>
+          </div>
+          <button class="view-restaurant-btn px-3 py-1 bg-[var(--primary)] text-white rounded-xl" data-id="${rest.id}">View</button>
+        `;
+        container.appendChild(div);
+      });
+
+      document.querySelectorAll('.view-restaurant-btn').forEach(btn => {
+        btn.onclick = () => {
+          const id = parseInt(btn.dataset.id);
+          const rest = state.restaurants.find(r => r.id === id);
+          openRestaurantPage(rest);
+        };
+      });
+    }
+
+    // Open Restaurant Page
+    function openRestaurantPage(restaurant) {
+      $('#restPageTitle').textContent = restaurant.name;
+      $('#restPageMeta').textContent = `${restaurant.eta} • ₦${restaurant.fee}`;
+      const menu = $('#restPageMenu');
+      menu.innerHTML = '';
+      restaurant.menu.forEach(meal => {
+        const item = document.createElement('div');
+        item.className = 'bg-white p-3 rounded-xl shadow-card';
+        item.innerHTML = `
+          <div class="flex gap-3">
+            <img src="${meal.img}" class="w-16 h-16 rounded object-cover">
+            <div class="flex-1">
+              <p class="font-medium">${meal.name}</p>
+              <p class="text-sm">₦${meal.price}</p>
+            </div>
+            <button class="add-btn self-center text-[var(--primary)]" data-id="${meal.id}">Add</button>
+          </div>
+        `;
+        menu.appendChild(item);
+      });
+      showPage('restaurantPage');
+    }
+
+    // Location Modal
+    $('#locBtn').onclick = () => {
+      const container = $('#locList');
+      container.innerHTML = '';
+      state.locations.forEach(loc => {
+        const li = document.createElement('li');
+        li.className = `p-2 rounded-xl cursor-pointer ${state.location === loc ? 'bg-[var(--primary)] text-white' : 'hover:bg-gray-100'}`;
+        li.textContent = loc;
+        li.onclick = () => {
+          state.location = loc;
+          $('#currentLocation').textContent = loc;
+          $('#profileLocation').textContent = loc;
+          localStorage.setItem('savedLocation', loc);
+          $('#closeLocModal').click();
+        };
+        container.appendChild(li);
+      });
+      $('#locModal').classList.remove('hidden');
+    };
+    $('#closeLocModal').onclick = () => $('#locModal').classList.add('hidden');
+
+    // Notifications & Promo Modals
+    $('#notifBtn').onclick = () => $('#notifModal').classList.remove('hidden');
+    $('#closeNotifModal').onclick = () => $('#notifModal').classList.add('hidden');
+    $('#promoBtn').onclick = () => $('#promoModal').classList.remove('hidden');
+    $('#closePromoModal').onclick = () => $('#promoModal').classList.add('hidden');
+
+    // Cart Actions
+    $('#cartFab').onclick = () => {
+      showPage('cartDrawer');
+      setTimeout(updateCart, 50);
+    };
+    $('#closeCartDrawer').onclick = () => showPage('homePage');
+    $('#checkoutBtn').onclick = () => { updateCheckout(); showPage('ordersPage'); };
+    $('#proceedToCheckout').onclick = () => { updateCheckout(); showPage('ordersPage'); };
+    $('#backToCartBtn').onclick = () => { updateCheckout(); showPage('ordersPage'); };
+
+    // Navigation
+    $('#seeAllCategoriesBtn').onclick = () => showPage('categoriesPage');
+    $('#backFromCategories').onclick = () => showPage('homePage');
+    $('#backFromRestaurant').onclick = () => showPage('homePage');
+    $('#viewAllRests').onclick = () => {
+      $('#allRestaurantsList').innerHTML = '';
+      state.restaurants.forEach(rest => {
+        const div = document.createElement('div');
+        div.className = 'bg-white p-3 rounded-xl shadow-card';
+        div.innerHTML = `<p class="font-semibold">${rest.name}</p><button class="view-restaurant-btn text-[var(--primary)]">View</button>`;
+        div.querySelector('button').onclick = () => openRestaurantPage(rest);
+        $('#allRestaurantsList').appendChild(div);
+      });
+      showPage('restaurantsPage');
+    };
+    $('#backFromRests').onclick = () => showPage('homePage');
+    $('#viewMorePopular').onclick = () => {
+      $('#popularMealsList').innerHTML = '';
+      const popular = state.restaurants.flatMap(r => r.menu).sort((a, b) => b.price - a.price).slice(0, 10);
+      popular.forEach(meal => {
+        const div = document.createElement('div');
+        div.className = 'bg-white p-3 rounded-xl shadow-card flex items-center gap-3';
+        div.innerHTML = `
+          <img src="${meal.img}" class="w-16 h-16 rounded object-cover">
+          <div class="flex-1">
+            <p class="font-medium">${meal.name}</p>
+            <p class="text-sm">₦${meal.price}</p>
+          </div>
+          <button class="add-btn text-[var(--primary)] text-sm" data-id="${meal.id}">Add</button>
+        `;
+        $('#popularMealsList').appendChild(div);
+      });
+      showPage('popularPage');
+    };
+    $('#backFromPopular').onclick = () => showPage('homePage');
+
+    // Search Functionality
+    $('#searchBtn').onclick = () => {
+      const query = $('#searchInput').value.trim().toLowerCase();
+      if (!query) return;
+      showPage('popularPage');
+      $('#popularMealsList').innerHTML = '';
+      const results = state.restaurants.flatMap(r => r.menu.filter(m => m.name.toLowerCase().includes(query)));
+      if (results.length === 0) {
+        $('#popularMealsList').innerHTML = '<p class="text-gray-500 p-4">No items found for "' + query + '"</p>';
+        return;
+      }
+      results.forEach(meal => {
+        const div = document.createElement('div');
+        div.className = 'bg-white p-3 rounded-xl shadow-card flex items-center gap-3';
+        div.innerHTML = `
+          <img src="${meal.img}" class="w-16 h-16 rounded object-cover">
+          <div class="flex-1">
+            <p class="font-medium">${meal.name}</p>
+            <p class="text-sm">₦${meal.price}</p>
+          </div>
+          <button class="add-btn text-[var(--primary)] text-sm" data-id="${meal.id}">Add</button>
+        `;
+        $('#popularMealsList').appendChild(div);
+      });
+    };
+    $('#searchInput').addEventListener('keypress', e => {
+      if (e.key === 'Enter') $('#searchBtn').click();
+    });
+
+    // Logout
+    $('#logoutBtn').onclick = async () => {
+      const { getAuth, signOut } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
+      const auth = getAuth();
+      try {
+        await signOut(auth);
+        sessionStorage.removeItem('authChecked');
+        window.location.href = "../index.html";
+      } catch (error) {
+        showAlert("Logout failed: " + error.message);
+      }
+    };
+
+    // Clear Cart
+    $('#clearCartBtn').onclick = () => {
+        if (state.cart.length === 0) {
+          showAlert("Your cart is already empty.");
+        return;
+        }
+        if (confirm("Are you sure you want to clear your cart?")) {
+          state.cart = []; // Clear cart in memory
+          updateCart();        // Update UI (cart drawer)
+          updateCheckout();    // Update checkout page
+          saveCartToStorage(); // ✅ Save empty cart to localStorage
+          showAlert("Cart cleared!");
+        }
+    };
+
+    // Add to Cart
+    function addToCart(id) {
+      const meal = state.restaurants.flatMap(r => r.menu).find(m => m.id === id);
+      if (!meal) return;
+      const item = state.cart.find(c => c.id === id);
+      if (item) {
+        item.qty++;
+      } else {
+        state.cart.push({ ...meal, qty: 1 });
+      }
+      updateCart();
+      updateCheckout();
+      saveCartToStorage();
+      showAlert(`${meal.name} added to cart!`);
+    }
+
+    // Update Cart UI
+    function updateCart() {
+      const container = $('#cartItems');
+      if (!container) return;
+      container.innerHTML = '';
+      if (state.cart.length === 0) {
+        container.innerHTML = '<p class="text-gray-500 text-center py-2">Your cart is empty</p>';
+        $('#cartSubtotal').textContent = '₦0';
+        $('#cartCount').textContent = '0';
+        return;
+      }
+      let total = 0;
+      state.cart.forEach(item => {
+        const price = item.price * item.qty;
+        total += price;
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'bg-white p-3 rounded-xl shadow-card flex items-center gap-3';
+        itemDiv.innerHTML = `
+          <img src="${item.img || 'https://via.placeholder.com/50'}" class="w-12 h-12 rounded object-cover" onerror="this.src='https://via.placeholder.com/50/cccccc/666666?text=Menu';">
+          <div class="flex-1">
+            <p class="font-medium text-sm">${item.name}</p>
+            <p class="text-sm">₦${item.price.toLocaleString()} × <span class="font-semibold">${item.qty}</span></p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button class="qty-btn minus w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center" data-id="${item.id}" data-action="minus">−</button>
+            <button class="qty-btn plus w-8 h-8 rounded-full bg-[var(--primary)] text-white flex items-center justify-center" data-id="${item.id}" data-action="plus">+</button>
+          </div>
+        `;
+        container.appendChild(itemDiv);
+      });
+      $('#cartSubtotal').textContent = `₦${total.toLocaleString()}`;
+      $('#cartCount').textContent = state.cart.reduce((sum, item) => sum + item.qty, 0);
+    }
+
+    // Special Offers
+    function updateSpecialOffer() {
+      const offerText = $('#specialOfferText');
+      const offerIcon = $('#specialOfferIcon');
+      const now = new Date();
+      const day = now.getDay();
+      const hour = now.getHours();
+      const userBirthday = "1995-07-15";
+      const today = now.toISOString().slice(0, 10);
+      let text = "5% off on delivery today!";
+      let icon = "bxs-truck";
+
+      if (day === 1) { text = "🌱 Meatless Monday: 15% off Veggie Meals!"; icon = "bx-leaf"; }
+      else if (day === 3) { text = "📚 Midweek Special: Free Bottle Water with any order!"; icon = "bxs-flame"; }
+      else if (day === 5) { text = "🎉 TGIF! Buy 1, Get 1 Free coca-cola!"; icon = "bxs-gift"; }
+      else if (day === 6 || day === 0) { text = "🍽️ Weekend Feast: 10% off all Rice Meals!"; icon = "bxs-food-menu"; }
+
+      if (hour < 10 && hour >= 6) { text = "🌅 Good Morning! 10% off Breakfast Orders!"; icon = "bxs-coffee"; }
+      else if (hour >= 14 && hour < 17) { text = "☕ Afternoon Treat: Free Drink with ₦5k+!"; icon = "bxs-drink"; }
+
+      const dateStr = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+      const occasions = {
+        "June 12": "🎄 Democracy Day! Free Delivery All Day!",
+        "October 1": "🎉 Happy Resumption! 25% Off First Order!",
+        "February 14": "💖 Happy Valentine's! Date Meal Special: ₦5k for 2!",
+        "October 1": "🇳🇬 Happy Nigeria Independence Day! Flag-colored meals 15% off!"
+      };
+      if (occasions[dateStr]) { text = occasions[dateStr]; icon = "bxs-party"; }
+
+      if (now.getMonth() === 3 && now.getDate() >= 23 && now.getDate() <= 30) {
+        text = "📚 Exam Week Support: Free Jollof Rice on orders over ₦6k!";
+        icon = "bxs-book";
+      }
+
+      if (today === userBirthday) {
+        text = "🎂 Happy Birthday! Your Meal is on Us!";
+        icon = "bxs-party";
+      }
+
+      offerText.textContent = text;
+      offerIcon.className = `text-4xl opacity-90 ${icon}`;
+    }
+
+    // Cart Storage
+    function saveCartToStorage() {
+      localStorage.setItem('cart', JSON.stringify(state.cart));
+    }
+    function loadCartFromStorage() {
+      const saved = localStorage.getItem('cart');
+      if (saved) state.cart = JSON.parse(saved);
+    }
+
+    // Event Delegation
+    document.body.addEventListener('click', e => {
+      if (e.target.classList.contains('qty-btn')) {
+        const id = parseInt(e.target.dataset.id);
+        const action = e.target.dataset.action;
+        const item = state.cart.find(c => c.id === id);
+        if (!item) return;
+        if (action === 'plus') item.qty++;
+        else if (action === 'minus') {
+          item.qty--;
+          if (item.qty <= 0) state.cart = state.cart.filter(c => c.id !== id);
+        }
+        updateCart();
+        updateCheckout();
+        saveCartToStorage();
+      }
+      if (e.target.classList.contains('add-btn')) {
+        addToCart(parseInt(e.target.dataset.id));
+      }
+    });
+
+    // Paystack Payment
+    $('#payNowBtn').onclick = () => {
+      if (state.cart.length === 0) return showAlert("Your cart is empty!");
+      const email = state.user.email || "user@example.com";
+      let total = 0;
+      state.cart.forEach(item => { total += item.price * item.qty; });
+      const deliveryFee = Array.from(new Set(state.cart.map(item => {
+        const r = state.restaurants.find(r => r.menu.some(m => m.id === item.id));
+        return r ? r.fee : 0;
+      }))).reduce((a, b) => a + b, 0);
+      total += deliveryFee;
+      const amountInKobo = total * 100;
+      const ref = 'chopswift_' + Date.now() + Math.floor(Math.random() * 1000);
+      const handler = PaystackPop.setup({
+        key: 'pk_test_5eb246498eddd9c9b005b7fb6a9c396b2d9afb03',
+        email, amount: amountInKobo, ref,
+        callback: function(response) {
+          showAlert(`🎉 Payment successful! Ref: ${response.reference}`);
+          let message = `✅ *PAYMENT CONFIRMED Ref: ${response.reference}Deliver to: ${state.location}`;
+          state.cart.forEach(item => {
+            message += `${item.name} ×${item.qty} = ₦${(item.price * item.qty).toLocaleString()}`;
+          });
+          message += `Total: ₦${total.toLocaleString()}Thank you!`;
+          window.open(`https://wa.me/2347083034571?text=${encodeURIComponent(message)}`, '_blank');
+          state.cart = []; updateCart(); updateCheckout(); saveCartToStorage(); showPage('homePage');
+        },
+        onClose: () => showAlert("Payment window closed.")
+      });
+      handler.openIframe();
+    };
+  </script>
+</body>
+</html>

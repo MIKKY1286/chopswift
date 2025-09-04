@@ -1,0 +1,19 @@
+chopswift/               # Project root (replace with chosen name)
+│
+├── index.html           # Splash screen + redirects to home
+├── home.html            # Landing page
+├── menu.html            # Food listing & order page
+├── checkout.html        # Checkout form
+├── admin.html           # Admin dashboard
+│
+├── /assets
+│   ├── /css
+│   │   └── style.css    # Extra custom styles (if needed, Tailwind mostly covers)
+│   ├── /js
+│   │   ├── firebase.js  # Firebase config + Firestore logic
+│   │   ├── app.js       # General app logic (cart, UI updates)
+│   │   └── admin.js     # Admin dashboard logic
+│   └── /img             # Logos, splash screen, food images
+│
+└── /vendor
+    └── tailwind.css     # Tailwind build file (or CDN link in each page)

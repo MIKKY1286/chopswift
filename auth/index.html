@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ChopSwift — Auth (LCU)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* small UI niceties */
+    .float-label { position: relative; }
+    .float-label input, .float-label textarea { padding-top: 1.15rem; padding-bottom: .6rem; }
+    .float-label label {
+      position: absolute; left: 0.9rem; top: 0.9rem;
+      color: #6b7280; font-size: .9rem; transform-origin:left top;
+      transition: transform .14s ease, top .14s ease, color .14s ease, font-size .14s ease;
+      pointer-events: none;
+    }
+    .float-label.filled label,
+    .float-label.focused label {
+      transform: translateY(-0.7rem) scale(.86);
+      top: 0.36rem;
+      color: #10b981; /* green-500 */
+    }
+    .card-enter { animation: cardIn .28s ease both; }
+    @keyframes cardIn { from { opacity:0; transform: translateY(8px) scale(.996);} to { opacity:1; transform: translateY(0) scale(1);} }
+
+    .hidden-fade { opacity:0; pointer-events:none; transform: translateY(6px); transition: all .22s ease; }
+    .visible-fade { opacity:1; pointer-events:auto; transform: translateY(0); transition: all .28s ease; }
+
+    /* ripples */
+    .ripple { position: relative; overflow: hidden; }
+    .ripple:active::after {
+      content:""; position:absolute; left:50%; top:50%;
+      width:200%; height:200%; background: rgba(255,255,255,0.12);
+      transform:translate(-50%,-50%) scale(.01); border-radius:50%; animation:ripple .6s linear;
+    }
+    @keyframes ripple { to { transform:translate(-50%,-50%) scale(1); opacity:0; } }
+  </style>
+</head>
+<body class="bg-green-50 min-h-screen flex items-center justify-center p-4">
+
+  <main class="w-full max-w-2xl">
+    <!-- Auth card -->
+    <section id="authCard" class="bg-white rounded-2xl shadow-lg p-6 md:p-10 card-enter">
+
+      <!-- Header -->
+      <div class="flex items-center gap-4 mb-5">
+        <div class="w-12 h-12 bg-green-50 rounded-xl grid place-items-center text-2xl text-green-600">🍔</div>
+        <div>
+          <h1 class="text-2xl font-bold text-green-700">ChopSwift</h1>
+          <p class="text-sm text-gray-500">Good food, right here at Lead City University</p>
+        </div>
+      </div>
+
+      <!-- Alert / feedback -->
+      <div id="alert" class="hidden-fade mb-4 rounded-lg p-3 text-sm"></div>
+
+      <!-- Toggle -->
+      <div class="flex gap-2 bg-gray-100 p-1 rounded-full mb-5">
+        <button id="tabLogin" class="flex-1 py-2 rounded-full bg-white text-green-700 font-semibold">Log in</button>
+        <button id="tabSignup" class="flex-1 py-2 rounded-full text-gray-600">Sign up</button>
+      </div>
+
+      <!-- LOGIN FORM -->
+      <form id="loginForm" class="space-y-4">
+        <div class="float-label" id="loginEmailWrap">
+          <label for="loginEmail">Email</label>
+          <input id="loginEmail" type="email" autocomplete="email" required
+                 class="w-full border rounded-xl px-3 focus:outline-none focus:ring-2 focus:ring-green-200" />
+        </div>
+
+        <div class="float-label relative" id="loginPasswordWrap">
+          <label for="loginPassword">Password</label>
+          <input id="loginPassword" type="password" autocomplete="current-password" required
+                 class="w-full border rounded-xl px-3 focus:outline-none focus:ring-2 focus:ring-green-200" />
+          <button type="button" id="toggleLoginPw" class="absolute right-3 top-2 text-sm text-gray-500">Show</button>
+        </div>
+
+        <div class="flex items-center justify-between gap-3">
+          <label class="flex items-center gap-2 text-sm">
+            <input id="rememberMe" type="checkbox" class="h-4 w-4"/>
+            <span>Remember me</span>
+          </label>
+          <a href="#" id="openForgot" class="text-sm text-green-600 hover:underline">Forgot password?</a>
+        </div>
+
+        <div class="flex gap-3">
+          <button id="btnLogin" type="submit" class="ripple flex-1 bg-green-600 hover:bg-green-700 text-white rounded-xl py-2 font-semibold flex items-center justify-center gap-2">
+            <span id="btnLoginText">Log in</span>
+            <svg id="spinnerLogin" class="hidden h-4 w-4 animate-spin" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+          </button>
+          <button id="btnGuest" type="button" class="flex-1 border rounded-xl py-2">Continue as guest</button>
+        </div>
+
+        <div class="text-center text-sm text-gray-500">Don't have an account? <a href="#" id="switchToSignup" class="text-green-600 hover:underline">Sign up</a></div>
+      </form>
+
+      <!-- SIGNUP FORM -->
+      <form id="signupForm" class="mt-2 space-y-4 hidden-fade">
+        <div class="float-label" id="signupNameWrap">
+          <label for="signupName">Full name</label>
+          <input id="signupName" type="text" autocomplete="name" class="w-full border rounded-xl px-3 focus:outline-none focus:ring-2 focus:ring-green-200"/>
+        </div>
+
+        <div class="float-label" id="signupEmailWrap">
+          <label for="signupEmail">Email</label>
+          <input id="signupEmail" type="email" autocomplete="email" class="w-full border rounded-xl px-3 focus:outline-none focus:ring-2 focus:ring-green-200"/>
+        </div>
+
+        <div class="float-label relative" id="signupPasswordWrap">
+          <label for="signupPassword">Password (min 6)</label>
+          <input id="signupPassword" type="password" autocomplete="new-password" class="w-full border rounded-xl px-3 focus:outline-none focus:ring-2 focus:ring-green-200"/>
+          <button type="button" id="toggleSignupPw" class="absolute right-3 top-2 text-sm text-gray-500">Show</button>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <label for="profileFile" class="cursor-pointer bg-green-50 text-green-700 px-3 py-2 rounded-xl border text-sm">Upload photo</label>
+          <span id="profileLabel" class="text-sm text-gray-500">optional</span>
+          <input id="profileFile" type="file" accept="image/*" class="hidden"/>
+        </div>
+
+        <div class="flex gap-3">
+          <button id="btnSignup" type="submit" class="ripple flex-1 bg-green-600 hover:bg-green-700 text-white rounded-xl py-2 font-semibold flex items-center justify-center gap-2">
+            <span id="btnSignupText">Create account</span>
+            <svg id="spinnerSignup" class="hidden h-4 w-4 animate-spin" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+          </button>
+          <button id="btnCancelSignup" type="button" class="flex-1 border rounded-xl py-2">Cancel</button>
+        </div>
+
+        <div class="text-center text-sm text-gray-500">Already have an account? <a href="#" id="switchToLogin" class="text-green-600 hover:underline">Log in</a></div>
+      </form>
+
+      <!-- Forgot password modal -->
+      <div id="forgotModal" class="fixed inset-0 z-40 hidden grid place-items-center bg-black/40 p-4">
+        <div class="bg-white rounded-xl p-5 w-full max-w-sm">
+          <h3 class="font-semibold mb-2">Reset password</h3>
+          <p class="text-sm text-gray-500 mb-3">Enter your email and we'll send a password reset link.</p>
+          <input id="forgotEmail" type="email" placeholder="email@example.com" class="w-full border rounded-xl px-3 py-2 mb-3" />
+          <div class="flex justify-end gap-2">
+            <button id="forgotCancel" class="px-4 py-2 rounded-lg border">Cancel</button>
+            <button id="forgotSend" class="px-4 py-2 rounded-lg bg-green-600 text-white">Send</button>
+          </div>
+        </div>
+      </div>
+
+      <p class="text-center text-xs text-gray-400 mt-4">By continuing you agree to ChopSwift Terms & Privacy</p>
+    </section>
+
+    <!-- After auth small app panel (shows user-only data) -->
+    <section id="appPanel" class="mt-6 bg-white rounded-2xl shadow-lg p-6 hidden-fade">
+      <div id="appWelcome" class="flex items-center justify-between">
+        <div>
+          <h2 id="welcomeName" class="text-xl font-semibold">Welcome</h2>
+          <p id="welcomeEmail" class="text-sm text-gray-500"></p>
+        </div>
+        <div id="appAvatar" class="w-12 h-12 rounded-full bg-green-50 grid place-items-center text-green-600 font-medium">U</div>
+      </div>
+
+      <div id="userData" class="mt-4 text-sm text-gray-600">
+        <p><strong>UID</strong>: <span id="userUID" class="text-xs text-gray-500"></span></p>
+        <p><strong>Orders</strong>: <span id="userOrders">0</span> (stored per user)</p>
+      </div>
+
+      <div class="mt-4 flex gap-3">
+        <button id="btnGoHome" class="flex-1 bg-green-600 text-white py-2 rounded-xl">Open app (placeholder)</button>
+        <button id="btnLogout" class="flex-1 border rounded-xl py-2">Logout</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- Firebase + logic -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { getStorage, ref as sref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
+
+    // ======  Firebase project's config ======
+  const firebaseConfig = {
+    apiKey: "AIzaSyDaQFXtOCIIichbxHy2mXEkYdA2k_P_TWc",
+    authDomain: "blog-28cb6.firebaseapp.com",
+    projectId: "blog-28cb6",
+    storageBucket: "blog-28cb6.firebasestorage.app",
+    messagingSenderId: "299460556471",
+    appId: "1:299460556471:web:4e0f39dd8a878657543f32"
+  };
+    // ========================================================
+
+    // init Firebase if config present
+    let app, auth, db, storage;
+    try {
+      app = initializeApp(firebaseConfig);
+      auth = getAuth(app);
+      db = getFirestore(app);
+      storage = getStorage(app);
+    } catch (err) {
+      console.warn("Firebase init failed (placeholders?). Some features will not work.", err);
+    }
+
+    // helpers
+    const $ = s => document.querySelector(s);
+    const show = el => { el.classList.remove('hidden-fade'); el.classList.add('visible-fade'); el.classList.remove('hidden'); };
+    const hide = el => { el.classList.remove('visible-fade'); el.classList.add('hidden-fade'); setTimeout(()=>el.classList.add('hidden'), 240); };
+    const setAlert = (msg, type='success') => {
+      const a = $('#alert');
+      a.textContent = msg;
+      a.className = (type==='success') ? 'mb-4 rounded-lg p-3 text-sm bg-green-50 text-green-700 visible-fade' : 'mb-4 rounded-lg p-3 text-sm bg-red-50 text-red-700 visible-fade';
+      clearTimeout(a._t); a._t = setTimeout(()=> hide(a), 4200);
+    };
+    const isEmail = v => /\S+@\S+\.\S+/.test(v);
+
+    // UI nodes
+    const tabLogin = $('#tabLogin'), tabSignup = $('#tabSignup');
+    const loginForm = $('#loginForm'), signupForm = $('#signupForm');
+    const switchToSignup = $('#switchToSignup'), switchToLogin = $('#switchToLogin'); // alt links
+    const btnLogin = $('#btnLogin'), spinnerLogin = $('#spinnerLogin'), btnLoginText = $('#btnLoginText');
+    const btnSignup = $('#btnSignup'), spinnerSignup = $('#spinnerSignup'), btnSignupText = $('#btnSignupText');
+    const btnGuest = $('#btnGuest');
+    const profileFile = $('#profileFile'), profileLabel = $('#profileLabel');
+    const forgotModal = $('#forgotModal'), forgotSend = $('#forgotSend'), forgotCancel = $('#forgotCancel'), forgotOpen = $('#openForgot');
+    const appPanel = $('#appPanel');
+
+    // float label handling
+    document.querySelectorAll('.float-label input').forEach(input => {
+      const wrap = input.closest('.float-label');
+      const sync = () => {
+        if (input.value && input.value.trim()!=='') wrap.classList.add('filled'); else wrap.classList.remove('filled');
+      };
+      input.addEventListener('input', sync);
+      input.addEventListener('focus', ()=> wrap.classList.add('focused'));
+      input.addEventListener('blur', ()=> wrap.classList.remove('focused'));
+      sync();
+    });
+
+    // toggle tabs
+    const showLoginUI = () => { tabLogin.classList.add('bg-white','text-green-700'); tabSignup.classList.remove('bg-white','text-green-700'); show(loginForm); hide(signupForm); };
+    const showSignupUI = () => { tabSignup.classList.add('bg-white','text-green-700'); tabLogin.classList.remove('bg-white','text-green-700'); show(signupForm); hide(loginForm); };
+
+    tabLogin.addEventListener('click', showLoginUI);
+    tabSignup.addEventListener('click', showSignupUI);
+    $('#switchToSignup')?.addEventListener('click', e => { e.preventDefault(); showSignupUI(); });
+    $('#switchToLogin')?.addEventListener('click', e => { e.preventDefault(); showLoginUI(); });
+
+    // show/hide passwords
+    $('#toggleLoginPw').addEventListener('click', (e)=> {
+      const p = $('#loginPassword'); p.type = p.type==='password' ? 'text' : 'password'; e.currentTarget.textContent = p.type==='password' ? 'Show' : 'Hide';
+    });
+    $('#toggleSignupPw').addEventListener('click', (e)=> {
+      const p = $('#signupPassword'); p.type = p.type==='password' ? 'text' : 'password'; e.currentTarget.textContent = p.type==='password' ? 'Show' : 'Hide';
+    });
+
+    // profile file pick
+    profileFile.addEventListener('change', ()=> {
+      const f = profileFile.files[0];
+      profileLabel.textContent = f ? f.name : 'optional';
+    });
+
+    // forgot modal open/close
+    forgotOpen.addEventListener('click', e=> { e.preventDefault(); show(forgotModal); });
+    forgotCancel.addEventListener('click', ()=> hide(forgotModal));
+
+    // set persistence based on Remember Me checkbox
+    async function setAuthPersistenceBasedOnCheckbox() {
+      if (!auth) return;
+      try {
+        const remember = $('#rememberMe').checked;
+        await setPersistence(auth, remember ? browserLocalPersistence : browserSessionPersistence);
+      } catch (err) {
+        console.warn('setPersistence failed', err);
+      }
+    }
+
+    // LOGIN
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!auth) return setAlert('Auth not configured (firebaseConfig missing)', 'error');
+
+      const email = $('#loginEmail').value.trim();
+      const pwd = $('#loginPassword').value;
+      if (!isEmail(email)) return setAlert('Enter a valid email', 'error');
+      if (!pwd) return setAlert('Enter password', 'error');
+
+      await setAuthPersistenceBasedOnCheckbox();
+
+      btnLoginText.textContent = 'Logging in...'; spinnerLogin.classList.remove('hidden'); btnLogin.disabled = true;
+      try {
+        await signInWithEmailAndPassword(auth, email, pwd);
+        // onAuthStateChanged will handle the rest
+      } catch (err) {
+        setAlert(err.message || 'Login failed', 'error');
+      } finally {
+        btnLoginText.textContent = 'Log in'; spinnerLogin.classList.add('hidden'); btnLogin.disabled = false;
+      }
+    });
+
+    // SIGNUP
+    signupForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!auth) return setAlert('Auth not configured (firebaseConfig missing)', 'error');
+
+      const name = $('#signupName').value.trim();
+      const email = $('#signupEmail').value.trim();
+      const pwd = $('#signupPassword').value;
+      if (!isEmail(email)) return setAlert('Enter a valid email', 'error');
+      if (!pwd || pwd.length < 6) return setAlert('Password must be at least 6 characters', 'error');
+
+      // persistence
+      await setAuthPersistenceBasedOnCheckbox();
+
+      btnSignupText.textContent = 'Creating...'; spinnerSignup.classList.remove('hidden'); btnSignup.disabled = true;
+      try {
+        const cred = await createUserWithEmailAndPassword(auth, email, pwd);
+        const uid = cred.user.uid;
+
+        // optional upload profile photo
+        let photoURL = null;
+        const file = profileFile.files[0];
+        if (file && storage) {
+          const ref = sref(storage, `profiles/${uid}_${Date.now()}_${file.name}`);
+          await uploadBytes(ref, file);
+          photoURL = await getDownloadURL(ref);
+        }
+
+        // write user doc to Firestore, separate per user
+        if (db) {
+          await setDoc(doc(db, 'users', uid), {
+            name: name || '',
+            email,
+            photoURL: photoURL || '',
+            createdAt: new Date().toISOString(),
+            orders: [] // placeholder for per-user orders array or you can create subcollection
+          });
+        }
+        setAlert('Account created, signed in', 'success');
+        // onAuthStateChanged will pick up the user and load their data
+      } catch (err) {
+        setAlert(err.message || 'Signup failed', 'error');
+      } finally {
+        btnSignupText.textContent = 'Create account'; spinnerSignup.classList.add('hidden'); btnSignup.disabled = false;
+      }
+    });
+
+    // Forgot send
+    forgotSend.addEventListener('click', async () => {
+      const email = $('#forgotEmail').value.trim();
+      if (!email) return setAlert('Enter your email', 'error');
+      if (!auth) return setAlert('Auth not configured', 'error');
+      try {
+        await sendPasswordResetEmail(auth, email);
+        hide(forgotModal);
+        setAlert('Password reset email sent', 'success');
+      } catch (err) {
+        setAlert(err.message || 'Reset failed', 'error');
+      }
+    });
+
+    // Guest flow
+    btnGuest.addEventListener('click', (e) => {
+      e.preventDefault();
+      localStorage.setItem('chopswift_guest', '1');
+      setAlert('Continuing as guest — limited access', 'success');
+      setTimeout(()=> {
+        showAppPanelAsGuest();
+      }, 700);
+    });
+
+    // logout
+    $('#btnLogout')?.addEventListener('click', async () => {
+      if (auth) {
+        try {
+          await signOut(auth);
+          localStorage.removeItem('chopswift_guest');
+          setAlert('Signed out', 'success');
+          // revert UI
+          hide(appPanel); show($('#authCard'));
+        } catch (err) {
+          setAlert('Logout failed', 'error');
+        }
+      } else {
+        // guest logout
+        localStorage.removeItem('chopswift_guest');
+        hide(appPanel); show($('#authCard'));
+      }
+    });
+
+    // observe auth state and load user-specific data
+    if (typeof auth !== 'undefined') {
+      onAuthStateChanged(auth, async (user) => {
+        if (user) {
+          try {
+            // read user doc from Firestore (isolated per uid)
+            let userDoc = null;
+            if (db) {
+              const snap = await getDoc(doc(db, 'users', user.uid));
+              if (snap.exists()) userDoc = snap.data();
+            }
+            showAppPanelWithUser(user, userDoc);
+          } catch (err) {
+            console.warn('fetch user doc failed', err);
+            showAppPanelWithUser(user, null);
+          }
+        } else {
+          // not signed in
+          // if guest exists in localStorage, show limited UI
+          if (localStorage.getItem('chopswift_guest') === '1') {
+            showAppPanelAsGuest();
+          } else {
+            // show auth card
+            hide(appPanel); show($('#authCard'));
+          }
+        }
+      });
+    } else {
+      // Firebase not configured: allow guest testing only
+      if (localStorage.getItem('chopswift_guest') === '1') showAppPanelAsGuest();
+    }
+
+    // UI: show app panel for signed in user
+    function showAppPanelWithUser(user, userDoc) {
+      hide($('#authCard'));
+      show(appPanel);
+      $('#welcomeName').textContent = userDoc?.name || user.displayName || 'Welcome';
+      $('#welcomeEmail').textContent = user.email || '';
+      $('#userUID').textContent = user.uid;
+      $('#userOrders').textContent = (userDoc?.orders?.length) || 0;
+      if (user.photoURL || userDoc?.photoURL) {
+        $('#appAvatar').textContent = '';
+        $('#appAvatar').style.backgroundImage = `url(${user.photoURL || userDoc.photoURL})`;
+        $('#appAvatar').style.backgroundSize = 'cover';
+        $('#appAvatar').style.backgroundPosition = 'center';
+      } else {
+        $('#appAvatar').textContent = (user.displayName ? user.displayName[0].toUpperCase() : 'U');
+        $('#appAvatar').style.backgroundImage = '';
+      }
+
+      // wire logout button (reselect because element exists)
+      $('#btnLogout').addEventListener('click', async () => {
+        try {
+          await signOut(auth);
+          setAlert('Signed out', 'success');
+          hide(appPanel); show($('#authCard'));
+        } catch (err) {
+          setAlert('Sign out failed', 'error');
+        }
+      });
+
+      // redirect to home.html instead of placeholder alert
+      $('#btnGoHome').addEventListener('click', () => {
+        window.location.href = "../home/index.html";
+      });
+    }
+
+    // UI: guest panel
+    function showAppPanelAsGuest() {
+      hide($('#authCard'));
+      show(appPanel);
+      $('#welcomeName').textContent = 'Guest';
+      $('#welcomeEmail').textContent = 'Limited access';
+      $('#userUID').textContent = 'guest';
+      $('#userOrders').textContent = '0';
+      $('#appAvatar').textContent = 'G';
+      $('#btnLogout').addEventListener('click', () => {
+        localStorage.removeItem('chopswift_guest');
+        hide(appPanel); show($('#authCard'));
+      });
+      $('#btnGoHome').addEventListener('click', () => {
+        window.location.href = "../home/index.html";
+      });
+    }
+
+    // small safety hint if not configured
+    if (!firebaseConfig.apiKey || firebaseConfig.apiKey === 'AIzaSyDaQFXtOCIIichbxHy2mXEkYdA2k_P_TWc') {
+      console.warn('Firebase config not set. Replace firebaseConfig placeholders with your project keys for full functionality.');
+      // If you want, show a small hint to the user visually:
+      // setAlert('Firebase not configured — only guest mode works.', 'error');
+    }
+  </script>
+
+</body>
+</html>
